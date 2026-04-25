@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#EA1D2C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LogiFlow">
+<link rel="manifest" id="manifestLink">
+<title>LogiFlow — Gestão de Entregas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --red: #EA1D2C;
+  --red-dark: #C41825;
+  --red-light: rgba(234,29,44,0.12);
+  --red-border: rgba(234,29,44,0.3);
+  --bg: #F5F5F5;
+  --white: #FFFFFF;
+  --card: #FFFFFF;
+  --border: #E8E8E8;
+  --border2: #D0D0D0;
+  --text: #3E3E3E;
+  --text2: #717171;
+  --text3: #A0A0A0;
+  --green: #50A773;
+  --green-light: rgba(80,167,115,0.12);
+  --amber: #F5A623;
+  --amber-light: rgba(245,166,35,0.12);
+  --blue: #3B82F6;
+  --blue-light: rgba(59,130,246,0.12);
+  --purple: #8B5CF6;
+  --purple-light: rgba(139,92,246,0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --font: 'Inter', sans-serif;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.15);
+  --nav-h: 64px;
+  --top-h: 60px;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── LAYOUT ── */
+.app { display: flex; height: 100dvh; overflow: hidden; flex-direction: column; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--red);
+  height: var(--top-h);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+}
+.topbar-logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { font-size: 22px; }
+.logo-text { font-size: 18px; font-weight: 700; color: white; letter-spacing: -0.5px; }
+.logo-sub { font-size: 10px; color: rgba(255,255,255,0.7); letter-spacing: 0.5px; text-transform: uppercase; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+/* ── DATE NAV ── */
+.date-nav {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 4px 4px 4px 10px;
+}
+.date-text { font-size: 13px; font-weight: 600; color: white; white-space: nowrap; cursor: pointer; }
+.date-arrow {
+  width: 28px; height: 28px;
+  background: rgba(255,255,255,0.2);
+  border: none; border-radius: 50%;
+  color: white; font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.date-arrow:hover { background: rgba(255,255,255,0.35); }
+#dateInput { position: fixed; opacity: 0; pointer-events: none; width: 0; height: 0; }
+
+.btn-today {
+  background: rgba(255,255,255,0.2);
+  border: none; border-radius: 20px;
+  color: white; font-size: 12px; font-weight: 500;
+  padding: 6px 12px; cursor: pointer;
+  transition: background 0.15s;
+  font-family: var(--font);
+}
+.btn-today:hover { background: rgba(255,255,255,0.35); }
+
+/* ── CONTENT ── */
+.content { flex: 1; overflow: hidden; position: relative; }
+
+/* swipe track */
+.views-track {
+  display: flex;
+  width: 500%;
+  height: 100%;
+  transition: transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+  touch-action: pan-y;
+}
+.views-track.is-dragging {
+  transition: none;
+  cursor: grabbing;
+}
+.view {
+  width: 20%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 16px 80px;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+}
+@keyframes viewSlideInRight {
+  from { opacity: 0.7; transform: translateX(18px); }
+  to   { opacity: 1;   transform: translateX(0); }
+}
+@keyframes viewSlideInLeft {
+  from { opacity: 0.7; transform: translateX(-18px); }
+  to   { opacity: 1;   transform: translateX(0); }
+}
+.view.anim-from-right { animation: viewSlideInRight 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.view.anim-from-left  { animation: viewSlideInLeft  0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+
+/* nav tab indicator slide animation */
+.nav-tab::before {
+  transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              right 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              opacity 0.2s;
+}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  height: var(--nav-h);
+  display: flex;
+  align-items: stretch;
+  z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-tab {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 500;
+  transition: color 0.15s;
+  border: none; background: none;
+  padding: 8px 0;
+  position: relative;
+}
+.nav-tab.active { color: var(--red); }
+.nav-tab .tab-icon { font-size: 20px; line-height: 1; }
+.nav-tab.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 3px;
+  background: var(--red);
+  border-radius: 0 0 4px 4px;
+}
+
+
+
+/* ── SECTION HEADER ── */
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; gap: 10px; flex-wrap: wrap;
+}
+.section-title { font-size: 18px; font-weight: 700; color: var(--text); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1.5px solid var(--border2);
+  background: var(--white);
+  color: var(--text);
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary { background: var(--red); border-color: var(--red); color: white; }
+.btn-primary:hover { background: var(--red-dark); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text2); padding: 6px 10px; }
+.btn-ghost:hover { background: var(--bg); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-icon { padding: 6px; width: 32px; height: 32px; justify-content: center; border-radius: 50%; }
+.btn-danger { color: #E53935; border-color: rgba(229,57,53,0.3); }
+.btn-danger:hover { background: rgba(229,57,53,0.08); }
+.btn-success { background: var(--green); border-color: var(--green); color: white; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.card-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.card-body { padding: 16px; }
+
+/* ── STAT CARDS ── */
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.stat-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+}
+.stat-card.red::after { background: var(--red); }
+.stat-card.green::after { background: var(--green); }
+.stat-card.amber::after { background: var(--amber); }
+.stat-card.blue::after { background: var(--blue); }
+.stat-card.purple::after { background: var(--purple); }
+.stat-icon { font-size: 22px; margin-bottom: 8px; }
+.stat-label { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 4px; }
+.stat-value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.stat-card.red .stat-value { color: var(--red); }
+.stat-card.green .stat-value { color: var(--green); }
+.stat-card.amber .stat-value { color: var(--amber); }
+.stat-card.blue .stat-value { color: var(--blue); }
+.stat-card.purple .stat-value { color: var(--purple); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 10px 12px; font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.8px; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--bg); }
+td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #FAFAFA; }
+
+/* ── BADGE ── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-green { background: var(--green-light); color: var(--green); }
+.badge-red { background: var(--red-light); color: var(--red); }
+.badge-amber { background: var(--amber-light); color: var(--amber); }
+.badge-blue { background: var(--blue-light); color: var(--blue); }
+.badge-purple { background: var(--purple-light); color: var(--purple); }
+
+/* ── PROGRESS ── */
+.progress-bar { height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 70px; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.progress-fill.green { background: var(--green); }
+.progress-fill.red { background: var(--red); }
+.progress-fill.amber { background: var(--amber); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(0px);
+  transition: background 0.3s ease, backdrop-filter 0.3s ease;
+}
+.modal-overlay.open {
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+}
+@media (min-width: 600px) {
+  .modal-overlay { align-items: center; }
+  .modal { border-radius: var(--radius-xl) !important; max-width: 520px !important; }
+}
+.modal {
+  background: var(--white);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 92dvh;
+  overflow-y: auto;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
+  transform: translateY(100%);
+  transition: transform 0.42s cubic-bezier(0.34, 1.2, 0.64, 1);
+  will-change: transform;
+}
+.modal-overlay.open .modal {
+  transform: translateY(0);
+}
+@media (min-width: 600px) {
+  .modal {
+    transform: scale(0.88) translateY(24px);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1), opacity 0.28s ease;
+  }
+  .modal-overlay.open .modal {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+.modal-overlay.closing {
+  background: rgba(0,0,0,0) !important;
+  backdrop-filter: blur(0px) !important;
+}
+.modal-overlay.closing .modal {
+  transform: translateY(105%);
+  transition: transform 0.32s cubic-bezier(0.4, 0, 1, 1);
+}
+@media (min-width: 600px) {
+  .modal-overlay.closing .modal {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    transition: transform 0.28s ease, opacity 0.22s ease;
+  }
+}
+.modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 12px auto 4px; }
+.modal-header { padding: 12px 20px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 16px; font-weight: 700; }
+.modal-body { padding: 20px; }
+.modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+/* ── FORM ── */
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+.form-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-input:focus { border-color: var(--red); background: white; }
+.form-input::placeholder { color: var(--text3); }
+.form-select {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+.form-select:focus { border-color: var(--red); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── INLINE EDIT ── */
+.edit-val {
+  font-size: 13px;
+  padding: 3px 7px;
+  background: var(--bg);
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+  text-align: center;
+  font-family: var(--font);
+}
+.edit-val:focus { border-color: var(--red); background: white; }
+.edit-val:hover:not(:focus) { border-color: var(--border); }
+
+/* ── ENTREGADOR CARD ── */
+.deliverers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.deliverer-card {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.deliverer-card:hover { border-color: var(--red); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(234,29,44,0.15); }
+.deliverer-card:active { transform: scale(0.97); }
+.deliverer-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--red), #FF6B35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: white;
+  margin: 0 auto 10px;
+}
+.deliverer-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.deliverer-sub { font-size: 11px; color: var(--text3); }
+.deliverer-actions-row { position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s; }
+.deliverer-card:hover .deliverer-actions-row { opacity: 1; }
+
+/* ── DESCONTO ITEM ── */
+.discount-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.discount-item:last-child { border-bottom: none; }
+.discount-item:hover { background: var(--bg); }
+.discount-icon { width: 36px; height: 36px; background: var(--red-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.discount-info { flex: 1; }
+.discount-name { font-size: 13px; font-weight: 600; }
+.discount-meta { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.discount-value { font-size: 14px; font-weight: 700; color: var(--red); font-variant-numeric: tabular-nums; }
+.discount-actions { display: flex; gap: 4px; }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-title { font-size: 15px; font-weight: 700; color: var(--text2); margin-bottom: 4px; }
+.empty-sub { font-size: 12px; }
+
+/* ── TOAST ── */
+.toast-container { position: fixed; bottom: 80px; right: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  background: var(--text);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-size: 13px; font-weight: 500;
+  color: white;
+  box-shadow: var(--shadow-lg);
+  animation: toastIn 0.2s ease;
+  display: flex; align-items: center; gap: 8px;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.toast.success { background: var(--green); }
+.toast.error { background: var(--red); }
+
+/* ── CHIPS ── */
+.chip {
+  display: inline-flex; align-items: center;
+  background: var(--blue-light);
+  color: var(--blue);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px; font-weight: 600;
+  margin: 2px;
+}
+.chip.red { background: var(--red-light); color: var(--red); }
+.chip.green { background: var(--green-light); color: var(--green); }
+
+/* ── CHECK LIST ── */
+.check-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.check-item { display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; padding: 8px 10px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg); transition: all 0.15s; }
+.check-item:hover { border-color: var(--red); }
+.check-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--red); flex-shrink: 0; }
+
+/* ── DATE FILTER CHIPS ── */
+.date-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.date-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  color: var(--text2);
+  transition: all 0.15s;
+}
+.date-chip.active { background: var(--red); border-color: var(--red); color: white; }
+
+/* ── HISTORY ── */
+.history-item {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+.history-date { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.history-routes { display: flex; flex-direction: column; gap: 8px; }
+.history-route {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+}
+.history-route-name { flex: 1; font-size: 13px; font-weight: 600; }
+.history-route-meta { font-size: 11px; color: var(--text3); }
+
+/* ── PROFILE MODAL ── */
+.profile-banner {
+  background: linear-gradient(135deg, var(--red), #FF6B35);
+  padding: 24px 20px 20px;
+  text-align: center;
+  color: white;
+}
+.profile-avatar-lg {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 700;
+  margin: 0 auto 12px;
+  border: 3px solid rgba(255,255,255,0.5);
+}
+.profile-name { font-size: 20px; font-weight: 700; }
+.profile-sub { font-size: 12px; opacity: 0.8; }
+.profile-stats { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--border); }
+.profile-stat { text-align: center; padding: 14px 8px; border-right: 1px solid var(--border); }
+.profile-stat:last-child { border-right: none; }
+.profile-stat-val { font-size: 18px; font-weight: 700; color: var(--text); }
+.profile-stat-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* ── DIVIDER ── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+/* ── UTILITY ── */
+.hidden { display: none !important; }
+.text-red { color: var(--red); }
+.text-green { color: var(--green); }
+.text-amber { color: var(--amber); }
+.text-blue { color: var(--blue); }
+.text-muted { color: var(--text2); }
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 12px; }
+.font-bold { font-weight: 700; }
+.mono { font-variant-numeric: tabular-nums; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-6 { gap: 6px; }
+.gap-8 { gap: 8px; }
+
+/* ── INSTALL BANNER ── */
+#installBanner {
+  background: var(--red);
+  color: white;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  position: relative;
+  z-index: 60;
+  flex-shrink: 0;
+}
+#installBanner .install-icon { font-size: 22px; }
+#installBanner .install-text { flex: 1; font-weight: 500; }
+#installBanner .install-text strong { font-weight: 700; display: block; }
+#installBtn {
+  background: white;
+  color: var(--red);
+  border: none;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+}
+#closeBanner {
+  background: none; border: none; color: rgba(255,255,255,0.7);
+  font-size: 18px; cursor: pointer; padding: 0 4px;
+}
+
+/* ── PWA FULLSCREEN ── */
+@media (display-mode: standalone) {
+  .app { height: 100dvh; }
+  .topbar { padding-top: env(safe-area-inset-top, 0); height: calc(var(--top-h) + env(safe-area-inset-top, 0)); }
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- INSTALL BANNER -->
+  <div id="installBanner" style="display:none">
+    <span class="install-icon">🚚</span>
+    <div class="install-text">
+      <strong>Instalar LogiFlow</strong>
+      Acesse rapidamente pelo celular
+    </div>
+    <button id="installBtn">Instalar</button>
+    <button id="closeBanner">✕</button>
+  </div>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <span class="logo-icon">🚚</span>
+      <div>
+        <div class="logo-text">LogiFlow</div>
+      </div>
+    </div>
+    <div class="date-nav">
+      <button class="date-arrow" onclick="changeDate(-1)">‹</button>
+      <div class="date-text" id="dateDisplay" onclick="openDatePicker()">—</div>
+      <button class="date-arrow" onclick="changeDate(1)">›</button>
+      <input type="date" id="dateInput" onchange="onDateInputChange(this.value)">
+    </div>
+    <button class="btn-today" onclick="goToday()">Hoje</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content" id="content">
+    <div class="views-track" id="viewsTrack"
+         ontouchstart="handleTouchStart(event)"
+         ontouchmove="handleTouchMove(event)"
+         ontouchend="handleTouchEnd(event)">
+      <div id="view-dashboard" class="view"></div>
+      <div id="view-rotas" class="view"></div>
+      <div id="view-entregadores" class="view"></div>
+      <div id="view-descontos" class="view"></div>
+      <div id="view-historico" class="view"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-tab active" onclick="switchTab('dashboard', this)">
+      <span class="tab-icon">📊</span>
+      Dashboard
+    </button>
+    <button class="nav-tab" onclick="switchTab('rotas', this)">
+      <span class="tab-icon">🗺️</span>
+      Rotas
+    </button>
+    <button class="nav-tab" onclick="switchTab('entregadores', this)">
+      <span class="tab-icon">👤</span>
+      Equipe
+    </button>
+    <button class="nav-tab" onclick="switchTab('descontos', this)">
+      <span class="tab-icon">💸</span>
+      Descontos
+    </button>
+    <button class="nav-tab" onclick="switchTab('historico', this)">
+      <span class="tab-icon">📋</span>
+      Histórico
+    </button>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let currentDate = todayISO();
+let currentTab = 'dashboard';
+let deferredPrompt = null;
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// ============================================================
+// PWA
+// ============================================================
+// Inline manifest via blob
+const manifest = {
+  name: "LogiFlow — Gestão de Entregas",
+  short_name: "LogiFlow",
+  description: "Gestão de entregas e entregadores",
+  start_url: ".",
+  display: "standalone",
+  background_color: "#EA1D2C",
+  theme_color: "#EA1D2C",
+  icons: [
+    { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23EA1D2C' rx='32'/><text y='140' x='30' font-size='120'>🚚</text></svg>", sizes: "192x192", type: "image/svg+xml" },
+    { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23EA1D2C' rx='80'/><text y='380' x='60' font-size='320'>🚚</text></svg>", sizes: "512x512", type: "image/svg+xml" }
+  ]
+};
+const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+document.getElementById('manifestLink').href = URL.createObjectURL(blob);
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('installBanner');
+  if (!localStorage.getItem('installDismissed')) banner.style.display = 'flex';
+});
+document.getElementById('installBtn').addEventListener('click', () => {
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById('installBanner').style.display = 'none'; }); }
+});
+document.getElementById('closeBanner').addEventListener('click', () => {
+  document.getElementById('installBanner').style.display = 'none';
+  localStorage.setItem('installDismissed', '1');
+});
+
+// ============================================================
+// STORAGE
+// ============================================================
+function loadData() { return JSON.parse(localStorage.getItem('logiflow_v2') || '{"days":{},"entregadores":[]}'); }
+function saveData(d) { localStorage.setItem('logiflow_v2', JSON.stringify(d)); }
+
+function getEntregadores() { return loadData().entregadores || []; }
+function saveEntregadores(arr) { const d = loadData(); d.entregadores = arr; saveData(d); }
+
+function getDayData(dk) {
+  const d = loadData();
+  if (!d.days) d.days = {};
+  if (!d.days[dk]) d.days[dk] = { pricePerPkg: 8.00, rotas: [], descontos: [] };
+  return d.days[dk];
+}
+function setDayData(dk, day) { const d = loadData(); if (!d.days) d.days = {}; d.days[dk] = day; saveData(d); }
+
+// ── MIGRATE old data ──
+(function migrate() {
+  const old = localStorage.getItem('logiflow_data');
+  if (!old || localStorage.getItem('logiflow_migrated')) return;
+  try {
+    const oldData = JSON.parse(old);
+    const newData = loadData();
+    // migrate days
+    Object.keys(oldData).forEach(dk => {
+      if (!newData.days) newData.days = {};
+      newData.days[dk] = oldData[dk];
+    });
+    saveData(newData);
+    localStorage.setItem('logiflow_migrated', '1');
+  } catch(e) {}
+})();
+
+// ============================================================
+// DATE
+// ============================================================
+function formatDateDisplay(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const weekdays = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  return { short: `${weekdays[dt.getDay()]}, ${String(d).padStart(2,'0')} ${months[m-1]}`, full: `${weekdays[dt.getDay()]}, ${String(d).padStart(2,'0')} de ${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][m-1]} de ${y}` };
+}
+
+function updateDateDisplay() {
+  const f = formatDateDisplay(currentDate);
+  document.getElementById('dateDisplay').textContent = f.short;
+  document.getElementById('dateInput').value = currentDate;
+}
+
+function changeDate(delta) {
+  const [y,m,d] = currentDate.split('-').map(Number);
+  const dt = new Date(y, m-1, d+delta);
+  currentDate = dt.toISOString().split('T')[0];
+  updateDateDisplay();
+  renderCurrentTab();
+}
+
+function goToday() { currentDate = todayISO(); updateDateDisplay(); renderCurrentTab(); }
+
+function openDatePicker() {
+  const inp = document.getElementById('dateInput');
+  inp.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;opacity:0;pointer-events:auto;';
+  if (inp.showPicker) inp.showPicker(); else inp.click();
+  setTimeout(() => inp.style.pointerEvents = 'none', 500);
+}
+
+function onDateInputChange(v) { if (v) { currentDate = v; updateDateDisplay(); renderCurrentTab(); } }
+
+// ============================================================
+// TABS
+// ============================================================
+const TAB_ORDER = ['dashboard','rotas','entregadores','descontos','historico'];
+
+function switchTab(tab, btn, direction) {
+  const prevIdx = TAB_ORDER.indexOf(currentTab);
+  const nextIdx = TAB_ORDER.indexOf(tab);
+  currentTab = tab;
+
+  // Update nav buttons
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else {
+    const allTabs = document.querySelectorAll('.nav-tab');
+    allTabs[nextIdx]?.classList.add('active');
+  }
+
+  // Slide the track to the new tab
+  const track = document.getElementById('viewsTrack');
+  track.classList.remove('is-dragging');
+  track.style.transition = 'transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+  track.style.transform = `translateX(-${nextIdx * 20}%)`;
+
+  // Animate the destination view content
+  const destView = document.getElementById(`view-${tab}`);
+  const animDir = direction !== undefined ? direction : (nextIdx > prevIdx ? 'right' : 'left');
+  destView.classList.remove('anim-from-right', 'anim-from-left');
+  // trigger reflow to restart animation
+  void destView.offsetWidth;
+  destView.classList.add(animDir === 'right' ? 'anim-from-right' : 'anim-from-left');
+  setTimeout(() => destView.classList.remove('anim-from-right', 'anim-from-left'), 350);
+
+  renderCurrentTab();
+}
+
+// Initialize track position on load
+(function initTrack() {
+  const track = document.getElementById('viewsTrack');
+  if (track) track.style.transform = 'translateX(0%)';
+})();
+
+function renderCurrentTab() {
+  if (currentTab === 'dashboard') renderDashboard();
+  else if (currentTab === 'rotas') renderRotas();
+  else if (currentTab === 'entregadores') renderEntregadores();
+  else if (currentTab === 'descontos') renderDescontos();
+  else if (currentTab === 'historico') renderHistorico();
+}
+
+// ============================================================
+// CALCULATIONS
+// ============================================================
+function calcDay(dk) {
+  const day = getDayData(dk);
+  let totalPkgs=0, donePkgs=0, collectedPkgs=0;
+  day.rotas.forEach(r => {
+    totalPkgs += (r.totalPkgs||0);
+    donePkgs += (r.donePkgs||0);
+    collectedPkgs += (r.collectedPkgs||0);
+  });
+  const grossValue = day.rotas.reduce((s,r) => {
+    const p = r.pricePerPkg !== undefined ? r.pricePerPkg : day.pricePerPkg;
+    return s + (r.donePkgs||0)*p;
+  }, 0);
+  const totalDescontos = (day.descontos||[]).reduce((s,d)=>s+(d.value||0),0);
+  return { totalPkgs, donePkgs, pendingPkgs: totalPkgs-donePkgs, collectedPkgs, grossValue, totalDescontos, netValue: grossValue-totalDescontos };
+}
+
+function calcEntregadorInRange(entregadorId, fromDate, toDate) {
+  const data = loadData();
+  const days = data.days || {};
+  let totalPkgs=0, donePkgs=0, collectedPkgs=0, grossValue=0, totalDescontos=0, routes=0;
+  
+  Object.keys(days).forEach(dk => {
+    if (dk < fromDate || dk > toDate) return;
+    const day = days[dk];
+    const ent = (day.entregadores||[]).find(e => e.globalId === entregadorId);
+    if (!ent) return;
+    const myRotaIds = ent.rotas || [];
+    const myRotas = (day.rotas||[]).filter(r => myRotaIds.includes(r.id));
+    routes += myRotas.length;
+    myRotas.forEach(r => {
+      totalPkgs += (r.totalPkgs||0);
+      donePkgs += (r.donePkgs||0);
+      collectedPkgs += (r.collectedPkgs||0);
+      const p = r.pricePerPkg !== undefined ? r.pricePerPkg : day.pricePerPkg;
+      grossValue += (r.donePkgs||0)*p;
+    });
+    // descontos deste entregador neste dia
+    (day.descontos||[]).filter(d => d.entregadorId === entregadorId).forEach(d => { totalDescontos += (d.value||0); });
+  });
+  
+  return { totalPkgs, donePkgs, collectedPkgs, grossValue, totalDescontos, netValue: grossValue-totalDescontos, routes };
+}
+
+function fmtMoney(v) { return 'R$ ' + Number(v).toFixed(2).replace('.', ','); }
+
+function dateRangeFromPreset(preset) {
+  const today = todayISO();
+  const [y,m,d] = today.split('-').map(Number);
+  const dt = new Date(y,m-1,d);
+  let from;
+  if (preset === '7d') { from = new Date(dt); from.setDate(from.getDate()-6); }
+  else if (preset === '15d') { from = new Date(dt); from.setDate(from.getDate()-14); }
+  else if (preset === '30d') { from = new Date(dt); from.setDate(from.getDate()-29); }
+  else if (preset === 'today') { from = new Date(dt); }
+  else { from = new Date(dt); from.setDate(from.getDate()-6); }
+  return { from: from.toISOString().split('T')[0], to: today };
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+let _dashPreset = 'today'; // today | 7d | 15d | 30d | custom
+let _dashFrom = todayISO();
+let _dashTo   = todayISO();
+
+function calcRange(fromDate, toDate) {
+  const data = loadData();
+  const days = data.days || {};
+  let totalPkgs=0, donePkgs=0, collectedPkgs=0, grossValue=0, totalDescontos=0, totalRoutes=0;
+  const daysWithData = [];
+
+  Object.keys(days).sort().forEach(dk => {
+    if (dk < fromDate || dk > toDate) return;
+    const day = days[dk];
+    if (!day.rotas || day.rotas.length === 0) return;
+    daysWithData.push(dk);
+    day.rotas.forEach(r => {
+      totalPkgs += (r.totalPkgs||0);
+      donePkgs  += (r.donePkgs||0);
+      collectedPkgs += (r.collectedPkgs||0);
+      const p = r.pricePerPkg !== undefined ? r.pricePerPkg : day.pricePerPkg;
+      grossValue += (r.donePkgs||0) * p;
+      totalRoutes++;
+    });
+    (day.descontos||[]).forEach(d => { totalDescontos += (d.value||0); });
+  });
+
+  return { totalPkgs, donePkgs, pendingPkgs: totalPkgs-donePkgs, collectedPkgs, grossValue, totalDescontos, netValue: grossValue-totalDescontos, totalRoutes, daysWithData };
+}
+
+function calcRangePerEntregador(entId, fromDate, toDate) {
+  return calcEntregadorInRange(entId, fromDate, toDate);
+}
+
+function dashSetPreset(preset) {
+  _dashPreset = preset;
+  const { from, to } = dateRangeFromPreset(preset);
+  _dashFrom = from; _dashTo = to;
+  renderDashboard();
+}
+
+window.dashSetPreset = dashSetPreset;
+window.dashSetCustomFrom = function(v) { _dashFrom = v; _dashPreset = 'custom'; renderDashboard(); };
+window.dashSetCustomTo   = function(v) { _dashTo   = v; _dashPreset = 'custom'; renderDashboard(); };
+
+function renderDashboard() {
+  const entregadores = getEntregadores();
+  const isToday = _dashPreset === 'today';
+
+  // Sync _dashFrom/_dashTo with preset unless custom
+  if (_dashPreset !== 'custom') {
+    const { from, to } = dateRangeFromPreset(_dashPreset);
+    _dashFrom = from; _dashTo = to;
+  }
+
+  const stats = calcRange(_dashFrom, _dashTo);
+  const { totalPkgs, donePkgs, pendingPkgs, grossValue, netValue, totalDescontos, totalRoutes } = stats;
+  const pct = totalPkgs > 0 ? Math.round((donePkgs/totalPkgs)*100) : 0;
+
+  // Preset chips
+  const presets = [
+    {id:'today', label:'Hoje'},
+    {id:'7d',    label:'7 dias'},
+    {id:'15d',   label:'15 dias'},
+    {id:'30d',   label:'1 mês'},
+  ];
+  const chipsHtml = presets.map(p =>
+    `<div class="date-chip ${_dashPreset===p.id?'active':''}" onclick="dashSetPreset('${p.id}')">${p.label}</div>`
+  ).join('');
+
+  // Per-entregador breakdown over range
+  let entBreakdown = '';
+  if (entregadores.length > 0) {
+    const rows = entregadores.map(ge => {
+      const s = calcRangePerEntregador(ge.id, _dashFrom, _dashTo);
+      if (s.routes === 0 && s.grossValue === 0) return '';
+      return `<tr>
+        <td><span style="font-weight:600">${ge.name}</span></td>
+        <td class="mono">${s.routes}</td>
+        <td class="mono text-green">${s.donePkgs}</td>
+        <td class="mono">${fmtMoney(s.grossValue)}</td>
+        <td class="mono text-red">- ${fmtMoney(s.totalDescontos)}</td>
+        <td class="mono font-bold text-green">${fmtMoney(s.netValue)}</td>
+      </tr>`;
+    }).filter(Boolean).join('');
+
+    if (rows) {
+      entBreakdown = `
+        <div class="card">
+          <div class="card-header"><div class="card-title">👥 Por Entregador</div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Entregador</th><th>Rotas</th><th>Pkgs</th><th>Bruto</th><th>Descontos</th><th>Líquido</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+  }
+
+  // Routes list (only shown in "Hoje" mode — day-specific view)
+  let rotasCard = '';
+  if (isToday) {
+    const day = getDayData(currentDate);
+    let rotaRows = '';
+    if (day.rotas.length === 0) {
+      rotaRows = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">🗺️</div><div class="empty-title">Nenhuma rota cadastrada</div><div class="empty-sub">Vá para Rotas para adicionar</div></div></td></tr>`;
+    } else {
+      day.rotas.forEach(r => {
+        const p = r.pricePerPkg!==undefined ? r.pricePerPkg : day.pricePerPkg;
+        const total = (r.donePkgs||0)*p;
+        const pctR = r.totalPkgs>0 ? Math.round(((r.donePkgs||0)/r.totalPkgs)*100) : 0;
+        rotaRows += `<tr>
+          <td class="font-bold">${r.name}</td>
+          <td><span class="mono text-green">${r.donePkgs||0}</span>/<span class="mono text-muted">${r.totalPkgs||0}</span></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="progress-bar" style="width:55px"><div class="progress-fill ${pctR===100?'green':pctR>=50?'amber':'red'}" style="width:${pctR}%"></div></div>
+              <span class="text-xs text-muted">${pctR}%</span>
+            </div>
+          </td>
+          <td class="mono font-bold text-green">${fmtMoney(total)}</td>
+        </tr>`;
+      });
+    }
+    rotasCard = `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🗺️ Rotas de Hoje</div>
+          <button class="btn btn-sm btn-primary" onclick="switchTab('rotas', document.querySelectorAll('.nav-tab')[1])">Ver →</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rota</th><th>Pkgs</th><th>Progresso</th><th>Valor</th></tr></thead>
+            <tbody>${rotaRows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  // price/pkg edit only when viewing today
+  const priceEdit = isToday ? (() => {
+    const day = getDayData(currentDate);
+    return `<div style="display:flex;align-items:center;gap:6px;background:var(--red-light);border:1.5px solid var(--red-border);border-radius:var(--radius);padding:8px 12px">
+      <span style="font-size:11px;font-weight:600;color:var(--red)">R$/pkg</span>
+      <input class="edit-val" style="width:60px;color:var(--red)" value="${day.pricePerPkg.toFixed(2)}" onchange="updateDayPrice(this.value)" type="number" step="0.01">
+    </div>`;
+  })() : '';
+
+  const periodLabel = _dashPreset === 'today'
+    ? formatDateDisplay(currentDate).full
+    : `${_dashFrom.split('-').reverse().join('/')} → ${_dashTo.split('-').reverse().join('/')}`;
+
+  document.getElementById('view-dashboard').innerHTML = `
+    <div class="section-header" style="margin-bottom:12px">
+      <div>
+        <div class="section-title">Dashboard</div>
+        <div class="text-sm text-muted">${periodLabel}</div>
+      </div>
+      ${priceEdit}
+    </div>
+
+    <!-- Filtro de período -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-body" style="padding:12px 14px">
+        <div class="date-chips" style="margin-bottom:${_dashPreset==='custom'?'12px':'0'}">
+          ${chipsHtml}
+          <div class="date-chip ${_dashPreset==='custom'?'active':''}" onclick="this.classList.add('active')" style="padding:6px 10px">
+            <span style="font-size:11px">📅 Período</span>
+          </div>
+        </div>
+        <div id="dashCustomDates" style="display:${_dashPreset==='custom'?'flex':'none'};align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:140px">
+            <span class="text-xs text-muted" style="white-space:nowrap">De:</span>
+            <input type="date" class="form-input" style="padding:7px 10px;font-size:13px" value="${_dashFrom}" onchange="dashSetCustomFrom(this.value)">
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:140px">
+            <span class="text-xs text-muted" style="white-space:nowrap">Até:</span>
+            <input type="date" class="form-input" style="padding:7px 10px;font-size:13px" value="${_dashTo}" onchange="dashSetCustomTo(this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-icon">📦</div>
+        <div class="stat-label">Total Pacotes</div>
+        <div class="stat-value">${totalPkgs}</div>
+        <div class="stat-sub">${donePkgs} entregues</div>
+      </div>
+      <div class="stat-card ${pendingPkgs>0?'red':'green'}">
+        <div class="stat-icon">${pendingPkgs>0?'⏳':'✅'}</div>
+        <div class="stat-label">Pendentes</div>
+        <div class="stat-value">${pendingPkgs}</div>
+        <div class="stat-sub">${pct}% concluído</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-icon">💰</div>
+        <div class="stat-label">Receita Bruta</div>
+        <div class="stat-value" style="font-size:16px">${fmtMoney(grossValue)}</div>
+        <div class="stat-sub">${totalRoutes} rota(s) no período</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon">🏦</div>
+        <div class="stat-label">Receita Líquida</div>
+        <div class="stat-value" style="font-size:16px">${fmtMoney(netValue)}</div>
+        <div class="stat-sub">- ${fmtMoney(totalDescontos)} descontos</div>
+      </div>
+    </div>
+
+    ${entBreakdown}
+    ${rotasCard}
+  `;
+
+  // wire up custom period toggle
+  const customChip = document.querySelector('#view-dashboard .date-chip:last-child');
+  if (customChip) {
+    customChip.onclick = () => {
+      _dashPreset = 'custom';
+      document.getElementById('dashCustomDates').style.display = 'flex';
+      document.querySelectorAll('#view-dashboard .date-chip').forEach(c => c.classList.remove('active'));
+      customChip.classList.add('active');
+    };
+  }
+}
+
+function updateDayPrice(v) {
+  const val = parseFloat(v);
+  if (isNaN(val)||val<0) return;
+  const day = getDayData(currentDate);
+  day.pricePerPkg = val;
+  setDayData(currentDate, day);
+  renderDashboard();
+  toast('Valor atualizado', 'success');
+}
+
+// ============================================================
+// ROTAS
+// ============================================================
+function renderRotas() {
+  const day = getDayData(currentDate);
+  const { totalPkgs, donePkgs, pendingPkgs, grossValue } = calcDay(currentDate);
+  const entregadores = getEntregadores();
+
+  let rows = '';
+  if (day.rotas.length === 0) {
+    rows = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🗺️</div><div class="empty-title">Nenhuma rota</div><div class="empty-sub">Toque em "Nova Rota" para começar</div></div></td></tr>`;
+  } else {
+    day.rotas.forEach((r, i) => {
+      const preco = r.pricePerPkg!==undefined ? r.pricePerPkg : day.pricePerPkg;
+      const total = (r.donePkgs||0)*preco;
+      const pending = (r.totalPkgs||0)-(r.donePkgs||0);
+      const pct = r.totalPkgs>0 ? Math.round(((r.donePkgs||0)/r.totalPkgs)*100) : 0;
+      const assignedEnt = (day.entregadores||[]).find(de => (de.rotas||[]).includes(r.id));
+      const ge = assignedEnt ? entregadores.find(e => e.id === assignedEnt.globalId) : null;
+      const entChip = ge ? `<span class="chip">${ge.name}</span>` : `<span class="text-muted text-xs">—</span>`;
+
+      rows += `<tr>
+        <td>
+          <div class="font-bold">${r.name}</div>
+          <div style="margin-top:4px">${entChip}</div>
+        </td>
+        <td><input class="edit-val" style="width:48px" value="${r.totalPkgs||0}" onchange="updateRota(${i},'totalPkgs',this.value)" type="number" min="0"></td>
+        <td><input class="edit-val" style="width:48px;color:var(--green)" value="${r.donePkgs||0}" onchange="updateRota(${i},'donePkgs',this.value)" type="number" min="0"></td>
+        <td><input class="edit-val" style="width:48px;color:var(--blue)" value="${r.collectedPkgs||0}" onchange="updateRota(${i},'collectedPkgs',this.value)" type="number" min="0"></td>
+        <td><span class="${pending>0?'text-red':'text-green'} mono">${pending}</span></td>
+        <td><input class="edit-val" style="width:58px" value="${preco.toFixed(2)}" onchange="updateRota(${i},'pricePerPkg',this.value)" type="number" step="0.01" min="0"></td>
+        <td class="mono font-bold text-green">${fmtMoney(total)}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-sm btn-icon" onclick="openRotaModal(${i})" title="Editar">✏️</button>
+            <button class="btn btn-sm btn-icon btn-danger" onclick="deleteRota(${i})" title="Excluir">🗑️</button>
+          </div>
+        </td>
+      </tr>`;
+    });
+  }
+
+  document.getElementById('view-rotas').innerHTML = `
+    <div class="section-header">
+      <div class="section-title">Rotas</div>
+      <button class="btn btn-primary" onclick="openRotaModal()">+ Nova Rota</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <span class="badge badge-blue">📦 ${totalPkgs}</span>
+      <span class="badge badge-green">✅ ${donePkgs}</span>
+      <span class="badge badge-red">⏳ ${pendingPkgs}</span>
+      <span class="badge badge-amber">💰 ${fmtMoney(grossValue)}</span>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Rota / Entregador</th><th>Total</th><th>Entregues</th><th>Coletados</th><th>Pendentes</th><th>R$/pkg</th><th>Valor</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function updateRota(i, field, val) {
+  const day = getDayData(currentDate);
+  const r = day.rotas[i];
+  let v = parseFloat(val);
+  if (isNaN(v)||v<0) v=0;
+  if (field==='donePkgs') v = Math.min(v, r.totalPkgs||0);
+  r[field] = v;
+  setDayData(currentDate, day);
+  renderRotas();
+}
+
+function deleteRota(i) {
+  if (!confirm('Excluir esta rota?')) return;
+  const day = getDayData(currentDate);
+  const rotaId = day.rotas[i].id;
+  day.rotas.splice(i,1);
+  (day.entregadores||[]).forEach(e => { e.rotas = (e.rotas||[]).filter(rid=>rid!==rotaId); });
+  setDayData(currentDate, day);
+  renderRotas();
+  renderDashboard();
+  toast('Rota excluída');
+}
+
+// ============================================================
+// ENTREGADORES (global, persistent)
+// ============================================================
+function renderEntregadores() {
+  const entregadores = getEntregadores();
+
+  let cards = '';
+  if (entregadores.length === 0) {
+    cards = `<div class="empty-state">
+      <div class="empty-icon">👤</div>
+      <div class="empty-title">Nenhum entregador cadastrado</div>
+      <div class="empty-sub">Toque em "+" para adicionar</div>
+    </div>`;
+  } else {
+    cards = entregadores.map((ge, i) => {
+      const initials = ge.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      // quick stats (all time)
+      const data = loadData();
+      let totalRoutes = 0, totalDone = 0;
+      Object.values(data.days||{}).forEach(day => {
+        const de = (day.entregadores||[]).find(e=>e.globalId===ge.id);
+        if (de) {
+          const myRotas = (day.rotas||[]).filter(r=>(de.rotas||[]).includes(r.id));
+          totalRoutes += myRotas.length;
+          myRotas.forEach(r=>{ totalDone += (r.donePkgs||0); });
+        }
+      });
+      return `
+        <div class="deliverer-card" onclick="openEntregadorProfile('${ge.id}')">
+          <div class="deliverer-actions-row" onclick="event.stopPropagation()">
+            <button class="btn btn-icon btn-ghost" style="background:var(--bg);border-color:var(--border)" onclick="openEditEntregadorModal(${i})" title="Editar">✏️</button>
+            <button class="btn btn-icon btn-ghost btn-danger" style="background:rgba(229,57,53,0.08)" onclick="deleteEntregador(${i})" title="Excluir">🗑️</button>
+          </div>
+          <div class="deliverer-avatar">${initials}</div>
+          <div class="deliverer-name">${ge.name}</div>
+          <div class="deliverer-sub">${totalRoutes} rotas · ${totalDone} pkgs</div>
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('view-entregadores').innerHTML = `
+    <div class="section-header">
+      <div class="section-title">Equipe</div>
+      <button class="btn btn-primary" onclick="openAddEntregadorModal()">+ Entregador</button>
+    </div>
+    <div class="deliverers-grid">${cards}</div>
+  `;
+}
+
+function deleteEntregador(i) {
+  const entregadores = getEntregadores();
+  const name = entregadores[i].name;
+  if (!confirm(`Excluir ${name}? Isso removerá de todas as rotas.`)) return;
+  const id = entregadores[i].id;
+  entregadores.splice(i,1);
+  saveEntregadores(entregadores);
+  // remove from all days
+  const data = loadData();
+  Object.keys(data.days||{}).forEach(dk => {
+    data.days[dk].entregadores = (data.days[dk].entregadores||[]).filter(de=>de.globalId!==id);
+    (data.days[dk].descontos||[]).forEach(d => { if(d.entregadorId===id) d.entregadorId=null; });
+  });
+  saveData(data);
+  renderEntregadores();
+  toast('Entregador removido');
+}
+
+// ── ENTREGADOR PROFILE MODAL ──
+function openEntregadorProfile(entId) {
+  const ge = getEntregadores().find(e=>e.id===entId);
+  if (!ge) return;
+  const initials = ge.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  let activePreset = '7d';
+  
+  function renderProfile() {
+    const { from, to } = dateRangeFromPreset(activePreset);
+    const stats = calcEntregadorInRange(entId, from, to);
+    const presets = [
+      {id:'today', label:'Hoje'},
+      {id:'7d', label:'7 dias'},
+      {id:'15d', label:'15 dias'},
+      {id:'30d', label:'1 mês'}
+    ];
+    
+    // get descontos in range
+    const data = loadData();
+    let descontosList = [];
+    Object.keys(data.days||{}).sort().reverse().forEach(dk => {
+      if (dk < from || dk > to) return;
+      const day = data.days[dk];
+      (day.descontos||[]).filter(d=>d.entregadorId===entId).forEach(d => {
+        descontosList.push({ ...d, date: dk });
+      });
+    });
+
+    const descontosHtml = descontosList.length > 0 
+      ? descontosList.map(d=>`<div class="discount-item">
+          <div class="discount-icon">💸</div>
+          <div class="discount-info">
+            <div class="discount-name">${d.name}</div>
+            <div class="discount-meta">${formatDateDisplay(d.date).short}</div>
+          </div>
+          <div class="discount-value">- ${fmtMoney(d.value)}</div>
+        </div>`).join('')
+      : `<div class="empty-state" style="padding:20px"><div class="empty-sub">Nenhum desconto no período</div></div>`;
+
+    const el = document.getElementById('profileContent');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="date-chips" style="padding:0 20px">
+        ${presets.map(p=>`<div class="date-chip ${p.id===activePreset?'active':''}" onclick="changeProfilePreset('${entId}','${p.id}')">${p.label}</div>`).join('')}
+        <div class="date-chip" style="display:flex;align-items:center;gap:4px">
+          <input type="date" id="profileFrom" value="${from}" style="border:none;background:transparent;font-size:12px;font-family:var(--font);cursor:pointer;outline:none;max-width:110px" onchange="changeProfileCustom('${entId}')">
+          <span>→</span>
+          <input type="date" id="profileTo" value="${to}" style="border:none;background:transparent;font-size:12px;font-family:var(--font);cursor:pointer;outline:none;max-width:110px" onchange="changeProfileCustom('${entId}')">
+        </div>
+      </div>
+      
+      <div style="padding:16px 20px 0">
+        <div class="stats-grid" style="margin-bottom:12px">
+          <div class="stat-card green">
+            <div class="stat-icon">📦</div>
+            <div class="stat-label">Entregues</div>
+            <div class="stat-value">${stats.donePkgs}</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-icon">📥</div>
+            <div class="stat-label">Coletados</div>
+            <div class="stat-value">${stats.collectedPkgs}</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-icon">💰</div>
+            <div class="stat-label">Bruto</div>
+            <div class="stat-value" style="font-size:16px">${fmtMoney(stats.grossValue)}</div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-icon">🗺️</div>
+            <div class="stat-label">Rotas</div>
+            <div class="stat-value">${stats.routes}</div>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-header">
+            <div class="card-title">💸 Descontos do Período</div>
+            <span class="mono text-red font-bold text-sm">- ${fmtMoney(stats.totalDescontos)}</span>
+          </div>
+          ${descontosHtml}
+        </div>
+        
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div class="card-title">🏦 Líquido do Período</div>
+          </div>
+          <div class="card-body" style="text-align:center">
+            <div style="font-size:28px;font-weight:700;color:var(--green)">${fmtMoney(stats.netValue)}</div>
+            <div class="text-sm text-muted" style="margin-top:4px">${fmtMoney(stats.grossValue)} bruto − ${fmtMoney(stats.totalDescontos)} descontos</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  window._profileRender = renderProfile;
+  window._profilePreset = { entId, preset: activePreset };
+
+  openModal(`
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="profile-banner">
+        <div class="profile-avatar-lg">${initials}</div>
+        <div class="profile-name">${ge.name}</div>
+        <div class="profile-sub">Ver estatísticas por período</div>
+      </div>
+      <div id="profileContent"></div>
+      <div style="padding:0 20px 20px;display:flex;justify-content:flex-end">
+        <button class="btn" onclick="closeModal()">Fechar</button>
+      </div>
+    </div>
+  `);
+  renderProfile();
+}
+
+window.changeProfilePreset = function(entId, preset) {
+  window._profilePreset = { entId, preset };
+  const el = document.querySelectorAll('.date-chip');
+  el.forEach(c => {
+    c.classList.toggle('active', c.textContent.trim() === {today:'Hoje','7d':'7 dias','15d':'15 dias','30d':'1 mês'}[preset]);
+  });
+  // update activePreset for closure
+  const { from, to } = dateRangeFromPreset(preset);
+  const fi = document.getElementById('profileFrom');
+  const ti = document.getElementById('profileTo');
+  if (fi) fi.value = from;
+  if (ti) ti.value = to;
+  // re-render by re-opening... simpler: update stats directly
+  renderProfileStats(entId, from, to, preset);
+};
+
+window.changeProfileCustom = function(entId) {
+  const from = document.getElementById('profileFrom')?.value;
+  const to = document.getElementById('profileTo')?.value;
+  if (!from || !to) return;
+  renderProfileStats(entId, from, to, 'custom');
+};
+
+function renderProfileStats(entId, from, to, preset) {
+  const stats = calcEntregadorInRange(entId, from, to);
+  const data = loadData();
+  let descontosList = [];
+  Object.keys(data.days||{}).sort().reverse().forEach(dk => {
+    if (dk < from || dk > to) return;
+    const day = data.days[dk];
+    (day.descontos||[]).filter(d=>d.entregadorId===entId).forEach(d => {
+      descontosList.push({ ...d, date: dk });
+    });
+  });
+  const descontosHtml = descontosList.length > 0
+    ? descontosList.map(d=>`<div class="discount-item">
+        <div class="discount-icon">💸</div>
+        <div class="discount-info">
+          <div class="discount-name">${d.name}</div>
+          <div class="discount-meta">${formatDateDisplay(d.date).short}</div>
+        </div>
+        <div class="discount-value">- ${fmtMoney(d.value)}</div>
+      </div>`).join('')
+    : `<div class="empty-state" style="padding:20px"><div class="empty-sub">Nenhum desconto no período</div></div>`;
+  
+  // update chip highlights
+  const presetMap = {today:'Hoje','7d':'7 dias','15d':'15 dias','30d':'1 mês'};
+  document.querySelectorAll('#modalOverlay .date-chip').forEach(c => {
+    c.classList.toggle('active', presetMap[preset] === c.textContent.trim());
+  });
+  
+  // update stats
+  const sc = document.querySelectorAll('#profileContent .stat-value');
+  if (sc[0]) sc[0].textContent = stats.donePkgs;
+  if (sc[1]) sc[1].textContent = stats.collectedPkgs;
+  if (sc[2]) sc[2].textContent = fmtMoney(stats.grossValue);
+  if (sc[3]) sc[3].textContent = stats.routes;
+  
+  // update descontos card
+  const discCard = document.querySelector('#profileContent .card');
+  if (discCard) {
+    discCard.querySelector('.discount-value, .card-body, div:not(.card-header)')?.remove?.();
+    const hdr = discCard.querySelector('.card-header .mono');
+    if (hdr) hdr.textContent = `- ${fmtMoney(stats.totalDescontos)}`;
+    // rebuild descontos
+    const existing = discCard.querySelectorAll('.discount-item, .empty-state');
+    existing.forEach(e=>e.remove());
+    discCard.insertAdjacentHTML('beforeend', descontosHtml);
+  }
+  
+  // update liquid
+  const cards = document.querySelectorAll('#profileContent .card');
+  if (cards[1]) {
+    const val = cards[1].querySelector('.card-body div:first-child');
+    const sub = cards[1].querySelector('.card-body div:last-child');
+    if (val) val.textContent = fmtMoney(stats.netValue);
+    if (sub) sub.textContent = `${fmtMoney(stats.grossValue)} bruto − ${fmtMoney(stats.totalDescontos)} descontos`;
+  }
+}
+
+// ── ADD / EDIT ENTREGADOR ──
+function openAddEntregadorModal() {
+  openModal(`
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title">👤 Novo Entregador</div>
+        <button class="btn btn-icon btn-ghost" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nome completo *</label>
+          <input class="form-input" id="eName" placeholder="Ex: João Silva">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveNewEntregador()">Adicionar</button>
+      </div>
+    </div>
+  `);
+  setTimeout(()=>document.getElementById('eName')?.focus(), 50);
+}
+
+function saveNewEntregador() {
+  const name = document.getElementById('eName').value.trim();
+  if (!name) { toast('Informe o nome', 'error'); return; }
+  const arr = getEntregadores();
+  arr.push({ id: 'ent_'+Date.now(), name });
+  saveEntregadores(arr);
+  closeModal();
+  renderEntregadores();
+  toast('Entregador adicionado', 'success');
+}
+
+function openEditEntregadorModal(i) {
+  const arr = getEntregadores();
+  const ge = arr[i];
+  openModal(`
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title">✏️ Editar Entregador</div>
+        <button class="btn btn-icon btn-ghost" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nome *</label>
+          <input class="form-input" id="eName" value="${ge.name}">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEditEntregador(${i})">Salvar</button>
+      </div>
+    </div>
+  `);
+  setTimeout(()=>document.getElementById('eName')?.focus(), 50);
+}
+
+function saveEditEntregador(i) {
+  const name = document.getElementById('eName').value.trim();
+  if (!name) { toast('Informe o nome', 'error'); return; }
+  const arr = getEntregadores();
+  arr[i].name = name;
+  saveEntregadores(arr);
+  closeModal();
+  renderEntregadores();
+  toast('Atualizado', 'success');
+}
+
+// ============================================================
+// DESCONTOS
+// ============================================================
+function renderDescontos() {
+  const day = getDayData(currentDate);
+  const { grossValue, totalDescontos, netValue } = calcDay(currentDate);
+  const descontos = day.descontos || [];
+  const entregadores = getEntregadores();
+
+  let items = '';
+  if (descontos.length === 0) {
+    items = `<div class="empty-state"><div class="empty-icon">💸</div><div class="empty-title">Nenhum desconto</div><div class="empty-sub">Adicione descontos para este dia</div></div>`;
+  } else {
+    items = descontos.map((d, i) => {
+      const ge = d.entregadorId ? entregadores.find(e=>e.id===d.entregadorId) : null;
+      return `<div class="discount-item">
+        <div class="discount-icon">💸</div>
+        <div class="discount-info">
+          <div class="discount-name">${d.name}</div>
+          <div class="discount-meta">${ge ? `👤 ${ge.name}` : 'Geral'}</div>
+        </div>
+        <div class="discount-value">- ${fmtMoney(d.value)}</div>
+        <div class="discount-actions">
+          <button class="btn btn-icon btn-ghost" onclick="openEditDescontoModal(${i})" title="Editar">✏️</button>
+          <button class="btn btn-icon btn-ghost btn-danger" onclick="deleteDesconto(${i})" title="Excluir">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('view-descontos').innerHTML = `
+    <div class="section-header">
+      <div class="section-title">Descontos</div>
+      <button class="btn btn-primary" onclick="openDescontoModal()">+ Desconto</button>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:14px">
+      <div class="stat-card amber">
+        <div class="stat-label">Bruto</div>
+        <div class="stat-value" style="font-size:15px">${fmtMoney(grossValue)}</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Descontos</div>
+        <div class="stat-value" style="font-size:15px">- ${fmtMoney(totalDescontos)}</div>
+      </div>
+      <div class="stat-card green" style="grid-column:span 2">
+        <div class="stat-label">Líquido</div>
+        <div class="stat-value" style="font-size:20px">${fmtMoney(netValue)}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">📋 Lista</div></div>
+      ${items}
+    </div>
+  `;
+}
+
+function openDescontoModal(editIdx) {
+  const day = getDayData(currentDate);
+  const entregadores = getEntregadores();
+  const isEdit = editIdx !== undefined;
+  const d = isEdit ? (day.descontos||[])[editIdx] : {};
+
+  const entOpts = entregadores.map(e =>
+    `<option value="${e.id}" ${d.entregadorId===e.id?'selected':''}>${e.name}</option>`
+  ).join('');
+
+  openModal(`
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title">${isEdit?'✏️ Editar':'💸 Novo'} Desconto</div>
+        <button class="btn btn-icon btn-ghost" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Descrição *</label>
+          <input class="form-input" id="dName" placeholder="Ex: Combustível, Manutenção..." value="${d.name||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor (R$) *</label>
+          <input class="form-input" id="dValue" type="number" step="0.01" min="0" placeholder="0.00" value="${d.value||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Entregador (opcional)</label>
+          <select class="form-select" id="dEnt">
+            <option value="">— Geral (sem atribuição) —</option>
+            ${entOpts}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveDesconto(${isEdit?editIdx:'undefined'})">${isEdit?'Salvar':'Adicionar'}</button>
+      </div>
+    </div>
+  `);
+  setTimeout(()=>document.getElementById('dName')?.focus(), 50);
+}
+
+function openEditDescontoModal(i) { openDescontoModal(i); }
+
+function saveDesconto(editIdx) {
+  const name = document.getElementById('dName').value.trim();
+  const value = parseFloat(document.getElementById('dValue').value);
+  const entregadorId = document.getElementById('dEnt').value || null;
+  if (!name) { toast('Informe a descrição', 'error'); return; }
+  if (isNaN(value)||value<=0) { toast('Informe um valor válido', 'error'); return; }
+
+  const day = getDayData(currentDate);
+  if (!day.descontos) day.descontos = [];
+  const isEdit = editIdx !== undefined && editIdx !== 'undefined';
+  
+  const obj = isEdit ? day.descontos[editIdx] : {};
+  obj.id = obj.id || 'desc_'+Date.now();
+  obj.name = name; obj.value = value; obj.entregadorId = entregadorId;
+  if (!isEdit) day.descontos.push(obj);
+  
+  setDayData(currentDate, day);
+  closeModal();
+  renderDescontos();
+  renderDashboard();
+  toast(isEdit?'Desconto atualizado':'Desconto adicionado', 'success');
+}
+
+function deleteDesconto(i) {
+  if (!confirm('Excluir desconto?')) return;
+  const day = getDayData(currentDate);
+  day.descontos.splice(i,1);
+  setDayData(currentDate, day);
+  renderDescontos();
+  renderDashboard();
+  toast('Desconto excluído');
+}
+
+// ============================================================
+// HISTORICO
+// ============================================================
+function renderHistorico() {
+  const entregadores = getEntregadores();
+  const data = loadData();
+  const allDays = data.days || {};
+  
+  // filter state
+  const filterEnt = window._histFilterEnt || '';
+  
+  const entOpts = entregadores.map(e =>
+    `<option value="${e.id}" ${filterEnt===e.id?'selected':''}>${e.name}</option>`
+  ).join('');
+
+  // build history
+  const sortedDays = Object.keys(allDays).sort().reverse();
+  let histHtml = '';
+
+  if (sortedDays.length === 0) {
+    histHtml = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">Sem histórico</div><div class="empty-sub">As rotas realizadas aparecerão aqui</div></div>`;
+  } else {
+    sortedDays.forEach(dk => {
+      const day = allDays[dk];
+      if (!day.rotas || day.rotas.length === 0) return;
+
+      let rotasToShow = day.rotas;
+      if (filterEnt) {
+        // find day entregador
+        const de = (day.entregadores||[]).find(e=>e.globalId===filterEnt);
+        if (!de) return;
+        rotasToShow = day.rotas.filter(r=>(de.rotas||[]).includes(r.id));
+        if (rotasToShow.length === 0) return;
+      }
+
+      const fmt = formatDateDisplay(dk);
+      const routeItems = rotasToShow.map(r => {
+        const p = r.pricePerPkg!==undefined ? r.pricePerPkg : day.pricePerPkg;
+        const val = (r.donePkgs||0)*p;
+        const pct = r.totalPkgs>0 ? Math.round(((r.donePkgs||0)/r.totalPkgs)*100) : 0;
+        // find assigned entregador
+        let assignedName = '';
+        if (!filterEnt) {
+          const de = (day.entregadores||[]).find(e=>(e.rotas||[]).includes(r.id));
+          if (de) {
+            const ge = entregadores.find(e=>e.id===de.globalId);
+            if (ge) assignedName = ge.name;
+          }
+        }
+        return `<div class="history-route">
+          <div style="flex:1">
+            <div class="history-route-name">${r.name}</div>
+            <div class="history-route-meta">${r.donePkgs||0}/${r.totalPkgs||0} pkgs${assignedName ? ` · ${assignedName}` : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="progress-bar" style="width:50px"><div class="progress-fill ${pct===100?'green':pct>=50?'amber':'red'}" style="width:${pct}%"></div></div>
+            <span class="badge ${pct===100?'badge-green':pct>=50?'badge-amber':'badge-red'}">${pct}%</span>
+            <span class="mono text-sm font-bold text-green">${fmtMoney(val)}</span>
+          </div>
+        </div>`;
+      }).join('');
+
+      if (!routeItems) return;
+
+      histHtml += `<div class="history-item">
+        <div class="history-date">${fmt.full}</div>
+        <div class="history-routes">${routeItems}</div>
+      </div>`;
+    });
+
+    if (!histHtml) {
+      histHtml = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Nenhuma rota encontrada</div><div class="empty-sub">Tente mudar o filtro</div></div>`;
+    }
+  }
+
+  document.getElementById('view-historico').innerHTML = `
+    <div class="section-header">
+      <div class="section-title">Histórico</div>
+    </div>
+    
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-body" style="padding:12px 16px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap">Filtrar por:</span>
+        <select class="form-select" style="flex:1" onchange="filterHistorico(this.value)">
+          <option value="">Todos os entregadores</option>
+          ${entOpts}
+        </select>
+      </div>
+    </div>
+
+    ${histHtml}
+  `;
+}
+
+window.filterHistorico = function(entId) {
+  window._histFilterEnt = entId;
+  renderHistorico();
+};
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(html) {
+  // close any existing modal first
+  const existing = document.getElementById('modalOverlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modalOverlay';
+  overlay.innerHTML = html;
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.body.appendChild(overlay);
+  // trigger open animation on next frame
+  requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
+}
+
+function closeModal() {
+  const overlay = document.getElementById('modalOverlay');
+  if (!overlay) return;
+  overlay.classList.add('closing');
+  overlay.classList.remove('open');
+  overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
+  // fallback in case transitionend doesn't fire
+  setTimeout(() => overlay.remove(), 400);
+}
+
+// ── ROTA MODAL ──
+function openRotaModal(editIdx) {
+  const day = getDayData(currentDate);
+  const isEdit = editIdx !== undefined;
+  const r = isEdit ? day.rotas[editIdx] : {};
+  const entregadores = getEntregadores();
+
+  // current assigned entregador for this rota
+  let currentEntId = '';
+  if (isEdit) {
+    const de = (day.entregadores||[]).find(e=>(e.rotas||[]).includes(r.id));
+    if (de) currentEntId = de.globalId;
+  }
+
+  const entOpts = entregadores.map(e =>
+    `<option value="${e.id}" ${currentEntId===e.id?'selected':''}>${e.name}</option>`
+  ).join('');
+
+  openModal(`
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title">${isEdit?'✏️ Editar':'🗺️ Nova'} Rota</div>
+        <button class="btn btn-icon btn-ghost" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nome da Rota *</label>
+          <input class="form-input" id="rName" placeholder="Ex: Rota Centro, Rota Norte..." value="${r.name||''}">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Total de Pacotes</label>
+            <input class="form-input" id="rTotal" type="number" min="0" placeholder="0" value="${r.totalPkgs||''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Entregues</label>
+            <input class="form-input" id="rDone" type="number" min="0" placeholder="0" value="${r.donePkgs||''}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Coletados</label>
+            <input class="form-input" id="rCollected" type="number" min="0" placeholder="0" value="${r.collectedPkgs||''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor/Pacote (R$)</label>
+            <input class="form-input" id="rPrice" type="number" step="0.01" min="0" placeholder="${day.pricePerPkg.toFixed(2)}" value="${isEdit&&r.pricePerPkg!==undefined?r.pricePerPkg.toFixed(2):''}">
+          </div>
+        </div>
+        ${entregadores.length > 0 ? `
+        <div class="form-group">
+          <label class="form-label">Atribuir Entregador</label>
+          <select class="form-select" id="rEnt">
+            <option value="">— Sem entregador —</option>
+            ${entOpts}
+          </select>
+        </div>` : ''}
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveRota(${isEdit?editIdx:'undefined'})">${isEdit?'Salvar':'Criar Rota'}</button>
+      </div>
+    </div>
+  `);
+  setTimeout(()=>document.getElementById('rName')?.focus(), 50);
+}
+
+function saveRota(editIdx) {
+  const name = document.getElementById('rName').value.trim();
+  if (!name) { toast('Informe o nome da rota', 'error'); return; }
+  
+  const totalPkgs = parseInt(document.getElementById('rTotal').value)||0;
+  let donePkgs = Math.min(parseInt(document.getElementById('rDone').value)||0, totalPkgs);
+  const collectedPkgs = parseInt(document.getElementById('rCollected').value)||0;
+  const priceRaw = document.getElementById('rPrice').value;
+  const pricePerPkg = priceRaw !== '' ? parseFloat(priceRaw) : undefined;
+  const entSelect = document.getElementById('rEnt');
+  const selectedEntId = entSelect ? entSelect.value : '';
+  
+  const day = getDayData(currentDate);
+  const isEdit = editIdx !== undefined && editIdx !== 'undefined';
+  
+  let rotaId;
+  if (isEdit) {
+    rotaId = day.rotas[editIdx].id;
+    day.rotas[editIdx] = { ...day.rotas[editIdx], name, totalPkgs, donePkgs, collectedPkgs, pricePerPkg };
+  } else {
+    rotaId = 'rota_'+Date.now();
+    day.rotas.push({ id: rotaId, name, totalPkgs, donePkgs, collectedPkgs, pricePerPkg });
+  }
+  
+  // Assign entregador
+  if (!day.entregadores) day.entregadores = [];
+  // remove this rota from all entregadores
+  day.entregadores.forEach(de => { de.rotas = (de.rotas||[]).filter(rid=>rid!==rotaId); });
+  
+  if (selectedEntId) {
+    let de = day.entregadores.find(e=>e.globalId===selectedEntId);
+    if (!de) { de = { globalId: selectedEntId, rotas: [] }; day.entregadores.push(de); }
+    if (!de.rotas.includes(rotaId)) de.rotas.push(rotaId);
+  }
+  
+  setDayData(currentDate, day);
+  closeModal();
+  renderRotas();
+  renderDashboard();
+  toast(isEdit?'Rota atualizada':'Rota criada', 'success');
+}
+
+// ============================================================
+// TOUCH NAV — live drag + snap
+// ============================================================
+let touchStartX = 0;
+let touchStartY = 0;
+let touchCurrentX = 0;
+let isSwiping = false;
+let swipeAxis = null; // 'x' | 'y' | null
+
+function handleTouchStart(e) {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchCurrentX = touchStartX;
+  isSwiping = false;
+  swipeAxis = null;
+}
+
+function handleTouchMove(e) {
+  const dx = e.touches[0].clientX - touchStartX;
+  const dy = e.touches[0].clientY - touchStartY;
+
+  // Determine axis lock on first meaningful movement
+  if (swipeAxis === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+    swipeAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+  }
+  if (swipeAxis !== 'x') return;
+
+  e.preventDefault();
+  isSwiping = true;
+  touchCurrentX = e.touches[0].clientX;
+
+  const idx = TAB_ORDER.indexOf(currentTab);
+  const basePct = idx * 20;
+  const totalWidth = document.getElementById('viewsTrack').parentElement.offsetWidth * 5;
+  const pxOffset = dx;
+  // Add resistance at edges
+  let resistedDx = pxOffset;
+  if ((idx === 0 && pxOffset > 0) || (idx === TAB_ORDER.length - 1 && pxOffset < 0)) {
+    resistedDx = pxOffset * 0.18;
+  }
+  const trackPct = basePct - (resistedDx / (totalWidth / 100));
+  const track = document.getElementById('viewsTrack');
+  track.classList.add('is-dragging');
+  track.style.transform = `translateX(-${trackPct}%)`;
+}
+
+function handleTouchEnd(e) {
+  if (!isSwiping) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const idx = TAB_ORDER.indexOf(currentTab);
+  const allBtns = document.querySelectorAll('.nav-tab');
+  const THRESHOLD = 55;
+
+  if (dx < -THRESHOLD && idx < TAB_ORDER.length - 1) {
+    switchTab(TAB_ORDER[idx + 1], allBtns[idx + 1], 'right');
+  } else if (dx > THRESHOLD && idx > 0) {
+    switchTab(TAB_ORDER[idx - 1], allBtns[idx - 1], 'left');
+  } else {
+    // Snap back
+    const track = document.getElementById('viewsTrack');
+    track.classList.remove('is-dragging');
+    track.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    track.style.transform = `translateX(-${idx * 20}%)`;
+  }
+  isSwiping = false;
+  swipeAxis = null;
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg, type='success') {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity 0.3s'; setTimeout(()=>el.remove(),300); },2500);
+}
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') closeModal();
+  if (!document.getElementById('modalOverlay')) {
+    if (e.key==='ArrowLeft') changeDate(-1);
+    if (e.key==='ArrowRight') changeDate(1);
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+updateDateDisplay();
+renderDashboard();
+
+// Passive:false touchmove needed to preventDefault during swipe
+const _track = document.getElementById('viewsTrack');
+_track.addEventListener('touchmove', handleTouchMove, { passive: false });
+// Remove the inline ontouchmove to avoid double-firing
+_track.removeAttribute('ontouchmove');
+</script>
+</body>
+</html>
