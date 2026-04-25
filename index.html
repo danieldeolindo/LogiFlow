@@ -272,7 +272,7 @@ html, body {
 .stat-card.purple .stat-value { color: var(--purple); }
 
 /* ── TABLE ── */
-.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; padding: 10px 12px; font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.8px; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--bg); }
 td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -358,11 +358,57 @@ tr:hover td { background: #FAFAFA; }
     transition: transform 0.28s ease, opacity 0.22s ease;
   }
 }
-.modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 12px auto 4px; }
+.modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 12px auto 4px; cursor: grab; transition: background 0.15s; }
+.modal-handle:active { cursor: grabbing; background: var(--text3); }
 .modal-header { padding: 12px 20px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
 .modal-title { font-size: 16px; font-weight: 700; }
 .modal-body { padding: 20px; }
 .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+/* Drag-to-close indicator strip at top of modal (invisible by default, shows on drag) */
+.modal.is-dragging-down {
+  transition: none !important;
+}
+
+/* ── BACKUP BUTTONS ── */
+.backup-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.backup-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: var(--font);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.backup-btn:active { transform: scale(0.96); }
+.backup-btn .backup-icon { font-size: 26px; }
+.backup-btn .backup-label { font-size: 12px; font-weight: 700; color: var(--text); }
+.backup-btn .backup-sub { font-size: 10px; color: var(--text3); }
+.backup-btn.download { border-color: var(--green); }
+.backup-btn.download:hover { background: var(--green-light); }
+.backup-btn.upload { border-color: var(--blue); }
+.backup-btn.upload:hover { background: var(--blue-light); }
+
+/* Backup period chips in modal */
+.backup-period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 6px; }
+.backup-period-btn {
+  padding: 8px 4px; border-radius: var(--radius); border: 1.5px solid var(--border);
+  background: var(--bg); font-family: var(--font); font-size: 12px; font-weight: 600;
+  color: var(--text2); cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.backup-period-btn.active { background: var(--green); border-color: var(--green); color: white; }
+.backup-period-custom { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.backup-period-custom label { font-size: 11px; font-weight: 600; color: var(--text2); }
 
 /* ── FORM ── */
 .form-group { margin-bottom: 16px; }
@@ -1794,6 +1840,20 @@ function renderHistorico() {
     <div class="section-header">
       <div class="section-title">Histórico</div>
     </div>
+
+    <div class="backup-row">
+      <button class="backup-btn download" onclick="openBackupDownloadModal()">
+        <span class="backup-icon">💾</span>
+        <span class="backup-label">Baixar Backup</span>
+        <span class="backup-sub">Exportar dados</span>
+      </button>
+      <button class="backup-btn upload" onclick="triggerBackupRestore()">
+        <span class="backup-icon">📂</span>
+        <span class="backup-label">Restaurar Backup</span>
+        <span class="backup-sub">Importar arquivo</span>
+      </button>
+    </div>
+    <input type="file" id="backupFileInput" accept=".json,.logiflow" style="display:none" onchange="restoreBackup(this)">
     
     <div class="card" style="margin-bottom:14px">
       <div class="card-body" style="padding:12px 16px;display:flex;align-items:center;gap:10px">
@@ -1815,10 +1875,14 @@ window.filterHistorico = function(entId) {
 };
 
 // ============================================================
-// MODAL
+// MODAL — drag-to-close + swipe isolation + back button
 // ============================================================
+let _modalDragStartY = 0;
+let _modalDragCurrentY = 0;
+let _modalIsDragging = false;
+let _modalScrolledTop = true;
+
 function openModal(html) {
-  // close any existing modal first
   const existing = document.getElementById('modalOverlay');
   if (existing) existing.remove();
 
@@ -1828,19 +1892,267 @@ function openModal(html) {
   overlay.innerHTML = html;
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
   document.body.appendChild(overlay);
-  // trigger open animation on next frame
-  requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
+
+  // Push a history entry so Android back button closes modal
+  history.pushState({ modal: true }, '');
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    overlay.classList.add('open');
+    // Attach drag-to-close on the modal element
+    const modal = overlay.querySelector('.modal');
+    if (modal) attachModalDrag(modal);
+  }));
+}
+
+function attachModalDrag(modal) {
+  let startY = 0;
+  let startScrollTop = 0;
+  let dragging = false;
+  let lockedDir = null; // 'drag' | 'scroll' | null
+
+  modal.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+    startScrollTop = modal.scrollTop;
+    dragging = false;
+    lockedDir = null;
+  }, { passive: true });
+
+  modal.addEventListener('touchmove', e => {
+    const dy = e.touches[0].clientY - startY;
+    const dx = Math.abs(e.touches[0].clientX - (e.touches[0].clientX)); // always 0 but kept for clarity
+
+    if (lockedDir === null) {
+      // Lock direction: dragging down from top = dismiss; otherwise scroll
+      if (Math.abs(dy) > 6) {
+        lockedDir = (dy > 0 && modal.scrollTop <= 0) ? 'drag' : 'scroll';
+      }
+    }
+
+    if (lockedDir === 'drag') {
+      e.preventDefault(); // block page scroll AND tab swipe
+      dragging = true;
+      const clampedDy = Math.max(0, dy);
+      modal.style.transition = 'none';
+      modal.style.transform = `translateY(${clampedDy}px)`;
+      const overlay = document.getElementById('modalOverlay');
+      if (overlay) {
+        const opacity = Math.max(0, 0.55 - (clampedDy / 400));
+        overlay.style.background = `rgba(0,0,0,${opacity})`;
+      }
+    }
+    // If lockedDir === 'scroll', do nothing — let native scroll handle it
+  }, { passive: false });
+
+  modal.addEventListener('touchend', e => {
+    if (!dragging) return;
+    const dy = e.changedTouches[0].clientY - startY;
+    modal.style.transition = '';
+    modal.style.transform = '';
+    const overlay = document.getElementById('modalOverlay');
+    if (overlay) overlay.style.background = '';
+
+    if (dy > 100) {
+      closeModal();
+    } else {
+      // Snap back
+      modal.style.transition = 'transform 0.32s cubic-bezier(0.34,1.2,0.64,1)';
+      modal.style.transform = 'translateY(0)';
+      setTimeout(() => { modal.style.transition = ''; modal.style.transform = ''; }, 350);
+    }
+    dragging = false;
+    lockedDir = null;
+  }, { passive: true });
+
+  // Also stop touchstart from bubbling to the views-track (prevents tab swipe while in modal)
+  modal.addEventListener('touchstart', e => e.stopPropagation(), { passive: true, capture: true });
 }
 
 function closeModal() {
   const overlay = document.getElementById('modalOverlay');
   if (!overlay) return;
+
+  // Clean up history state
+  if (history.state && history.state.modal) {
+    history.back();
+  }
+
   overlay.classList.add('closing');
   overlay.classList.remove('open');
   overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
-  // fallback in case transitionend doesn't fire
   setTimeout(() => overlay.remove(), 400);
 }
+
+// Android back button / browser back — close modal if open
+window.addEventListener('popstate', e => {
+  const overlay = document.getElementById('modalOverlay');
+  if (overlay) {
+    overlay.classList.add('closing');
+    overlay.classList.remove('open');
+    overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
+    setTimeout(() => overlay.remove(), 400);
+  }
+});
+
+// ============================================================
+// BACKUP — download & restore
+// ============================================================
+let _backupPeriod = 'all';
+let _backupCustomFrom = '';
+let _backupCustomTo = '';
+
+function openBackupDownloadModal() {
+  const today = todayISO();
+  openModal(`
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title">💾 Baixar Backup</div>
+        <button class="btn btn-icon btn-ghost" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" style="margin-bottom:10px">Período do backup</label>
+          <div class="backup-period-grid">
+            <button class="backup-period-btn ${_backupPeriod==='today'?'active':''}" onclick="setBackupPeriod('today',this)">Hoje</button>
+            <button class="backup-period-btn ${_backupPeriod==='7d'?'active':''}" onclick="setBackupPeriod('7d',this)">7 dias</button>
+            <button class="backup-period-btn ${_backupPeriod==='15d'?'active':''}" onclick="setBackupPeriod('15d',this)">15 dias</button>
+            <button class="backup-period-btn ${_backupPeriod==='30d'?'active':''}" onclick="setBackupPeriod('30d',this)">1 mês</button>
+            <button class="backup-period-btn ${_backupPeriod==='all'?'active':''}" onclick="setBackupPeriod('all',this)">Tudo</button>
+            <button class="backup-period-btn ${_backupPeriod==='custom'?'active':''}" onclick="setBackupPeriod('custom',this)">Período</button>
+          </div>
+          <div id="backupCustomRange" style="display:${_backupPeriod==='custom'?'flex':'none'}" class="backup-period-custom">
+            <label>De</label>
+            <input class="form-input" type="date" id="bkFrom" value="${_backupCustomFrom||today}" style="flex:1;min-width:120px" onchange="_backupCustomFrom=this.value">
+            <label>até</label>
+            <input class="form-input" type="date" id="bkTo" value="${_backupCustomTo||today}" style="flex:1;min-width:120px" onchange="_backupCustomTo=this.value">
+          </div>
+        </div>
+        <div style="background:var(--green-light);border-radius:var(--radius);padding:12px 14px;font-size:12px;color:var(--green);font-weight:500;">
+          ℹ️ O arquivo de backup pode ser restaurado neste app a qualquer momento clicando em <strong>Restaurar Backup</strong>.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-success" onclick="downloadBackup()">⬇️ Baixar</button>
+      </div>
+    </div>
+  `);
+}
+
+window.setBackupPeriod = function(period, btn) {
+  _backupPeriod = period;
+  document.querySelectorAll('.backup-period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const customRange = document.getElementById('backupCustomRange');
+  if (customRange) customRange.style.display = period === 'custom' ? 'flex' : 'none';
+};
+
+window.downloadBackup = function() {
+  const data = loadData();
+  const today = todayISO();
+  let fromDate = '0000-00-00';
+  let toDate = '9999-99-99';
+  let labelStr = 'tudo';
+
+  if (_backupPeriod === 'today') {
+    fromDate = toDate = today;
+    labelStr = today;
+  } else if (_backupPeriod === '7d') {
+    const f = new Date(); f.setDate(f.getDate()-6);
+    fromDate = f.toISOString().split('T')[0]; toDate = today;
+    labelStr = `${fromDate}_a_${today}`;
+  } else if (_backupPeriod === '15d') {
+    const f = new Date(); f.setDate(f.getDate()-14);
+    fromDate = f.toISOString().split('T')[0]; toDate = today;
+    labelStr = `${fromDate}_a_${today}`;
+  } else if (_backupPeriod === '30d') {
+    const f = new Date(); f.setDate(f.getDate()-29);
+    fromDate = f.toISOString().split('T')[0]; toDate = today;
+    labelStr = `${fromDate}_a_${today}`;
+  } else if (_backupPeriod === 'custom') {
+    const bkFrom = document.getElementById('bkFrom');
+    const bkTo = document.getElementById('bkTo');
+    fromDate = (bkFrom && bkFrom.value) || today;
+    toDate = (bkTo && bkTo.value) || today;
+    if (fromDate > toDate) { toast('Data inicial maior que final', 'error'); return; }
+    labelStr = `${fromDate}_a_${toDate}`;
+  }
+
+  // Filter days by range (for 'all', keep everything)
+  let exportData;
+  if (_backupPeriod === 'all') {
+    exportData = data;
+  } else {
+    const filteredDays = {};
+    Object.keys(data.days || {}).forEach(dk => {
+      if (dk >= fromDate && dk <= toDate) filteredDays[dk] = data.days[dk];
+    });
+    exportData = { ...data, days: filteredDays };
+  }
+
+  // Tag the backup so we can recognise it on import
+  exportData._logiflow_backup = true;
+  exportData._backup_version = 2;
+  exportData._backup_created = new Date().toISOString();
+  exportData._backup_period = _backupPeriod === 'all' ? 'tudo' : `${fromDate} a ${toDate}`;
+
+  const json = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `logiflow_backup_${labelStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  closeModal();
+  toast('Backup baixado com sucesso!', 'success');
+};
+
+window.triggerBackupRestore = function() {
+  const inp = document.getElementById('backupFileInput');
+  if (inp) inp.click();
+};
+
+window.restoreBackup = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported._logiflow_backup) {
+        toast('Arquivo inválido. Selecione um backup do LogiFlow.', 'error');
+        input.value = '';
+        return;
+      }
+      // Merge strategy: imported data wins for overlapping days, keep existing days not in backup
+      const current = loadData();
+      const merged = {
+        entregadores: imported.entregadores || current.entregadores || [],
+        days: { ...(current.days || {}), ...(imported.days || {}) },
+        _logiflow_backup: undefined
+      };
+      // Remove internal backup tags
+      delete merged._logiflow_backup;
+      delete merged._backup_version;
+      delete merged._backup_created;
+      delete merged._backup_period;
+
+      saveData(merged);
+      input.value = '';
+      renderCurrentTab();
+      renderHistorico();
+
+      const period = imported._backup_period || '';
+      toast(`Backup restaurado!${period ? ' (' + period + ')' : ''}`, 'success');
+    } catch(err) {
+      toast('Erro ao ler o arquivo de backup.', 'error');
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+};
 
 // ── ROTA MODAL ──
 function openRotaModal(editIdx) {
@@ -1953,15 +2265,20 @@ function saveRota(editIdx) {
 }
 
 // ============================================================
-// TOUCH NAV — live drag + snap
+// TOUCH NAV — live drag + snap (ignores modal touches)
 // ============================================================
 let touchStartX = 0;
 let touchStartY = 0;
 let touchCurrentX = 0;
 let isSwiping = false;
 let swipeAxis = null; // 'x' | 'y' | null
+let swipeBlocked = false; // true when touch started inside a modal
 
 function handleTouchStart(e) {
+  // Block tab swipe if a modal is open OR if the touch originated inside a scrollable table/modal
+  swipeBlocked = !!document.getElementById('modalOverlay');
+  if (swipeBlocked) return;
+
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
   touchCurrentX = touchStartX;
@@ -1970,6 +2287,7 @@ function handleTouchStart(e) {
 }
 
 function handleTouchMove(e) {
+  if (swipeBlocked) return;
   const dx = e.touches[0].clientX - touchStartX;
   const dy = e.touches[0].clientY - touchStartY;
 
@@ -1978,6 +2296,11 @@ function handleTouchMove(e) {
     swipeAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
   }
   if (swipeAxis !== 'x') return;
+
+  // Don't swipe if the touch target is a horizontally scrollable element
+  const target = e.target;
+  const scrollable = target.closest('.table-wrap, [style*="overflow-x"]');
+  if (scrollable && scrollable.scrollWidth > scrollable.clientWidth) return;
 
   e.preventDefault();
   isSwiping = true;
@@ -1999,7 +2322,7 @@ function handleTouchMove(e) {
 }
 
 function handleTouchEnd(e) {
-  if (!isSwiping) return;
+  if (swipeBlocked || !isSwiping) return;
   const dx = e.changedTouches[0].clientX - touchStartX;
   const idx = TAB_ORDER.indexOf(currentTab);
   const allBtns = document.querySelectorAll('.nav-tab');
@@ -2036,10 +2359,12 @@ function toast(msg, type='success') {
 // KEYBOARD
 // ============================================================
 document.addEventListener('keydown', e => {
-  if (e.key==='Escape') closeModal();
+  if (e.key === 'Escape' || e.key === 'Back') {
+    if (document.getElementById('modalOverlay')) { closeModal(); e.preventDefault(); return; }
+  }
   if (!document.getElementById('modalOverlay')) {
-    if (e.key==='ArrowLeft') changeDate(-1);
-    if (e.key==='ArrowRight') changeDate(1);
+    if (e.key === 'ArrowLeft') changeDate(-1);
+    if (e.key === 'ArrowRight') changeDate(1);
   }
 });
 
